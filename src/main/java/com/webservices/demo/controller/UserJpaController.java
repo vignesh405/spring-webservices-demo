@@ -1,9 +1,11 @@
 package com.webservices.demo.controller;
 
 import java.net.URI;
+import java.nio.file.attribute.UserPrincipalNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 import javax.validation.Valid;
 
@@ -27,51 +29,52 @@ import com.fasterxml.jackson.databind.ser.FilterProvider;
 import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 import com.webservices.demo.exception.UserNotFound;
+import com.webservices.demo.filters.FilterHelper;
+import com.webservices.demo.model.Post;
 import com.webservices.demo.model.User;
+import com.webservices.demo.repository.PostRepository;
 import com.webservices.demo.repository.UserDAOService;
+import com.webservices.demo.repository.UserRepository;
 
 
 
 @RestController
-public class UserController {
+public class UserJpaController {
 
+	
 	@Autowired
-	private UserDAOService userDAOService;
+	private UserRepository userRepository;
+	
+	@Autowired
+	private PostRepository postRepository;
 	
 	@Autowired
 	private MessageSource messageSource;
 	
-	@GetMapping("/users")
+	@Autowired
+	private FilterHelper filterHelper;
+	
+	@GetMapping("/jpa/users")
 	public MappingJacksonValue retrieveAll(){
-		SimpleBeanPropertyFilter filter = SimpleBeanPropertyFilter.filterOutAllExcept("id","name","birthDate","secretInfo2","openInfo");
-		FilterProvider filters = new SimpleFilterProvider().addFilter("UserFilter", filter);
-		List<User> userList = userDAOService.findAll();
-//		ArrayList<MappingJacksonValue> mappingList = new ArrayList<>();
-//		for (User user : userList) {
-//			MappingJacksonValue mapping = new MappingJacksonValue(user);
-//			mapping.setFilters(filters);
-//			mappingList.add(mapping);
-//		}
-		MappingJacksonValue mapping = new MappingJacksonValue(userList);
-		mapping.setFilters(filters);
-		return mapping;
+		List<User> userList = userRepository.findAll();
+		return filterHelper.getUserMapping(userList);
 	}
 	
-	@GetMapping("/users/{id}")
-	public EntityModel<User> retrieveUser(@PathVariable int id) {
-		User user = userDAOService.findOne(id);
-		if(user==null)
+	@GetMapping("/jpa/users/{id}")
+	public MappingJacksonValue retrieveUser(@PathVariable int id) {
+		Optional<User> user = userRepository.findById(id);
+		if(!user.isPresent())
 			throw new UserNotFound("id-"+id);
 		
-		EntityModel<User> model = EntityModel.of(user);
+		EntityModel<Optional<User>> model = EntityModel.of(user);
 		WebMvcLinkBuilder linkToUsers = WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(this.getClass()).retrieveAll());
 		model.add(linkToUsers.withRel("all-users"));
-		return model;
+		return filterHelper.getUserMapping(model);
 	}
 	
-	@PostMapping("/users")
+	@PostMapping("/jpa/users")
 	public ResponseEntity postUser(@Valid @RequestBody User user) {
-		User savedUser = userDAOService.save(user);
+		User savedUser = userRepository.save(user);
 		URI uri = ServletUriComponentsBuilder
 			.fromCurrentRequest()
 			.path("/{id}")
@@ -79,21 +82,46 @@ public class UserController {
 		EntityModel<User> model = EntityModel.of(savedUser);
 		WebMvcLinkBuilder linkToSavedUser = WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(this.getClass()).retrieveUser(savedUser.getId()));
 		model.add(linkToSavedUser.withRel("saved-user"));
-		return ResponseEntity.created(uri).body(model);
+		return ResponseEntity.created(uri).body(filterHelper.getUserMapping(model));
 	}
 	
-	@DeleteMapping("/users/{id}")
+	@DeleteMapping("/jpa/users/{id}")
 	public void deleteUser(@PathVariable int id) {
-		if(!userDAOService.deleteById(id)) {
-			throw new UserNotFound("id-"+id);
-		}
+		userRepository.deleteById(id);
 	}
 	
-	@GetMapping("/users/about")
+	@GetMapping("/jpa/users/about")
 	public String aboutUsers() {
 		
 		return messageSource.getMessage("about.users.message", null, "Default Message", LocaleContextHolder.getLocale());
 	}
 	
+	@GetMapping("/jpa/users/{id}/posts")
+	public List<Post> retrievePostsOfUser(@PathVariable int id){
+		Optional<User> user = userRepository.findById(id);
+		if(!user.isPresent()) {
+			throw new UserNotFound("id-"+id);
+		}
+		return user.get().getPosts();
+	}
 	
+	@PostMapping("/jpa/users/{id}/jpa/posts")
+	public ResponseEntity createPostOfUser(@PathVariable int id,@RequestBody Post post){
+		Optional<User> userOptional = userRepository.findById(id);
+		if(!userOptional.isPresent()) {
+			throw new UserNotFound("id-"+id);
+		}
+		
+		User user = userOptional.get();
+		post.setUser(user);
+		postRepository.save(post);
+		URI uri = ServletUriComponentsBuilder
+				.fromCurrentRequest()
+				.path("/{id}")
+				.buildAndExpand(post.getId()).toUri();
+			EntityModel<Post> model = EntityModel.of(post);
+			WebMvcLinkBuilder linkToSavedUser = WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(PostJpaController.class).getPostById(post.getId()));
+			model.add(linkToSavedUser.withRel("saved-post"));
+		return ResponseEntity.created(uri).body(model);
+	}
 }

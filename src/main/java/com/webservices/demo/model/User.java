@@ -1,15 +1,26 @@
 package com.webservices.demo.model;
 
 import java.util.Date;
+import java.util.List;
 
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.OneToMany;
 import javax.validation.constraints.Past;
 import javax.validation.constraints.Size;
 
 import com.fasterxml.jackson.annotation.JsonFilter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+
+
+
+@Entity
 @JsonFilter("UserFilter")
 public class User {
+	@Id
+	@GeneratedValue
 	private Integer id;
 	
 	@Size(min=2,message="Name should have atlease 2 characters")
@@ -21,6 +32,15 @@ public class User {
 	@JsonIgnore
 	private String secrectInfo;
 	
+	@OneToMany(mappedBy="user")
+	private List<Post> posts;
+	
+	public List<Post> getPosts() {
+		return posts;
+	}
+	public void setPosts(List<Post> posts) {
+		this.posts = posts;
+	}
 	public String getSecrectInfo2() {
 		return secrectInfo2;
 	}
@@ -36,6 +56,10 @@ public class User {
 	}
 	public void setOpenInfo(String openInfo) {
 		this.openInfo = openInfo;
+	}
+	
+	public User() {
+		super();
 	}
 	public User(Integer id, String name, Date birthDate,String secretInfo,String secretInfo2,String openInfo) {
 		super();
