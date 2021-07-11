@@ -13,9 +13,9 @@ public class PostDAOService {
 	private static List<Post> posts = new ArrayList<>();
 	private static int postCount;
 	static {
-		posts.add(new Post(1,"post1","sample content 1"));
-		posts.add(new Post(2,"post2","sample content 2"));
-		posts.add(new Post(3,"post3","sample content 3"));
+		posts.add(new Post(1,"post1","sample content 1","secretInfo1"));
+		posts.add(new Post(2,"post2","sample content 2","secretInfo2"));
+		posts.add(new Post(3,"post3","sample content 3","secretInfo3"));
 		postCount = 3;
 	}
 	

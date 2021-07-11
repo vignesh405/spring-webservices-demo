@@ -2,6 +2,9 @@ package com.webservices.demo.model;
 
 import javax.validation.constraints.NotBlank;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(value= {"secretInfo"})
 public class Post {
 	private Integer id;
 	
@@ -10,11 +13,20 @@ public class Post {
 	
 	@NotBlank
 	private String postContent;
-	public Post(Integer id, String postName, String postContent) {
+	
+	private String secretInfo;
+	public Post(Integer id, String postName, String postContent,String secretInfo) {
 		super();
 		this.id = id;
 		this.postName = postName;
 		this.postContent = postContent;
+		this.secretInfo = secretInfo;
+	}
+	public String getSecretInfo() {
+		return secretInfo;
+	}
+	public void setSecretInfo(String secretInfo) {
+		this.secretInfo = secretInfo;
 	}
 	public void setId(Integer id) {
 		this.id = id;
